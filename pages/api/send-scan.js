@@ -1,116 +1,98 @@
-// pages/api/send-scan.js
+import formidable from "formidable";
 import fs from "fs";
 import nodemailer from "nodemailer";
-import formidable from "formidable";
 
-// Disable Next.js body parser for this route so formidable can parse multipart
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-const parseForm = (req) =>
-  new Promise((resolve, reject) => {
-    const form = formidable({
-      multiples: true,
-      maxFileSize: 20 * 1024 * 1024, // 20 MB limit total per file (ajuste se quiser)
-      keepExtensions: true,
-      uploadDir: "/tmp", // funciona no Vercel durante execução
-    });
-
+function parseForm(req) {
+  const form = formidable({ multiples: true });
+  return new Promise((resolve, reject) => {
     form.parse(req, (err, fields, files) => {
-      if (err) return reject(err);
-      resolve({ fields, files });
+      if (err) reject(err);
+      else resolve({ fields, files });
     });
   });
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // 🔒 VALIDA ENVs (impede localhost)
+  const required = [
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "SMTP_PASS",
+    "SMTP_FROM",
+    "TO_EMAIL",
+  ];
+
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length) {
+    console.error("❌ SMTP ENV faltando:", missing);
+    return res
+      .status(500)
+      .json({ error: `SMTP envs faltando: ${missing.join(", ")}` });
+  }
+
   try {
     const { fields, files } = await parseForm(req);
 
-    // Monta HTML do email com dados do formulário
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: process.env.SMTP_SECURE === "true", // true para 465
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    const attachments = [];
+
+    if (files) {
+      for (const key of Object.keys(files)) {
+        const f = Array.isArray(files[key]) ? files[key] : [files[key]];
+        f.forEach((file) => {
+          attachments.push({
+            filename: file.originalFilename,
+            content: fs.readFileSync(file.filepath),
+          });
+        });
+      }
+    }
+
     const html = `
-      <h2>Novo envio - Formulário de Escaneamento</h2>
+      <h2>Formulário de Escaneamento</h2>
       <ul>
-        <li><strong>Cirurgião:</strong> ${escapeHtml(fields.cirurgiao || "")}</li>
-        <li><strong>Paciente:</strong> ${escapeHtml(fields.paciente || "")}</li>
-        <li><strong>Tipo:</strong> ${escapeHtml(fields.tipo || "")}</li>
-        <li><strong>Implante / Observações:</strong> ${escapeHtml(fields.implante || "")}</li>
-        <li><strong>Link do escaneamento:</strong> ${escapeHtml(fields.link || "")}</li>
+        <li><b>Dentista:</b> ${fields.dentistName} ${fields.dentistLast}</li>
+        <li><b>Paciente:</b> ${fields.patientName} ${fields.patientLast}</li>
+        <li><b>Tipo:</b> ${fields.scanType}</li>
+        <li><b>Conexão:</b> ${fields.connection}</li>
+        <li><b>Implante:</b> ${fields.implantInfo}</li>
+        <li><b>Comentários:</b> ${fields.comments}</li>
+        <li><b>Link:</b> ${fields.link}</li>
       </ul>
     `;
 
-    // Configura o transporter usando variáveis de ambiente
-    const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: process.env.SMTP_SECURE === "true",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-    // Monta anexos a partir de files (formidable)
-    const attachments = [];
-    if (files && Object.keys(files).length > 0) {
-      // files pode ter único arquivo ou array
-      for (const key of Object.keys(files)) {
-        const item = files[key];
-        if (Array.isArray(item)) {
-          for (const f of item) {
-            attachments.push({
-              filename: f.originalFilename || f.newFilename || "file",
-              path: f.filepath || f.path,
-            });
-          }
-        } else {
-          attachments.push({
-            filename: item.originalFilename || item.newFilename || "file",
-            path: item.filepath || item.path,
-          });
-        }
-      }
-    }
-
-    const mailOptions = {
+    await transporter.sendMail({
       from: process.env.SMTP_FROM,
       to: process.env.TO_EMAIL,
-      subject: `Novo Scan - ${fields.paciente || "Paciente"}`,
+      subject: "Novo escaneamento recebido",
       html,
       attachments,
-    };
+    });
 
-    // Send mail
-    const info = await transporter.sendMail(mailOptions);
-
-    // Opcional: limpar arquivos temporários
-    for (const a of attachments) {
-      try {
-        fs.unlinkSync(a.path);
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    console.log("Email enviado:", info.messageId);
-    return res.status(200).json({ ok: true, messageId: info.messageId });
+    console.log("✅ Email enviado com sucesso");
+    return res.status(200).json({ ok: true });
   } catch (err) {
-    console.error("Erro em send-scan:", err);
-    // se for erro de conexão SMTP, env var incorreta é provável
-    return res.status(500).json({ error: String(err) });
+    console.error("❌ ERRO SMTP:", err);
+    return res.status(500).json({ error: err.message });
   }
-}
-
-// função auxiliar para escapar HTML simples
-function escapeHtml(text = "") {
-  return String(text)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
