@@ -5,11 +5,23 @@ import formidable from "formidable";
 
 const readFile = promisify(fs.readFile);
 
+// Next.js: desativa o body parser para permitir formidable
 export const config = {
   api: {
-    bodyParser: false, // obrigatório p/ formidable
+    bodyParser: false,
   },
 };
+
+/*
+ENV VARS (defina no Vercel / .env.local - NUNCA comite senhas):
+SMTP_HOST
+SMTP_PORT
+SMTP_SECURE   (string "true" or "false", optional; fallback based on port)
+SMTP_USER
+SMTP_PASS
+SMTP_FROM
+TO_EMAIL
+*/
 
 const parseForm = (req) =>
   new Promise((resolve, reject) => {
@@ -38,7 +50,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // valida ENVs
+  // valida envs
   const missing = envMissing();
   if (missing.length) {
     console.error("SMTP envs faltando:", missing);
@@ -50,7 +62,7 @@ export default async function handler(req, res) {
     console.log("Form fields:", Object.keys(fields));
     console.log("Files:", Object.keys(files));
 
-    // Monta o HTML do e-mail (ajuste conforme seu formulário)
+    // monta HTML do email
     const html = `
       <h2>Novo envio - Formulário de Escaneamento</h2>
       <ul>
@@ -62,43 +74,45 @@ export default async function handler(req, res) {
       </ul>
     `;
 
-    // Cria transporter
-    const smtpHost = process.env.SMTP_HOST || "";
-const smtpPort = Number(process.env.SMTP_PORT || 0);
-let smtpSecure = process.env.SMTP_SECURE;
+    // cria transporter - com logs e parsing de envs
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = Number(process.env.SMTP_PORT || 0);
 
-if (typeof smtpSecure === "undefined" || smtpSecure === "") {
-  smtpSecure = (smtpPort === 465); // default secure= true for 465
-} else {
-  smtpSecure = smtpSecure === "true" || smtpSecure === true;
-}
+    let smtpSecure = process.env.SMTP_SECURE;
+    if (smtpSecure === "true" || smtpSecure === "1" || smtpSecure === true) smtpSecure = true;
+    else if (smtpSecure === "false" || smtpSecure === "0" || smtpSecure === false) smtpSecure = false;
+    else smtpSecure = smtpPort === 465; // fallback: porta 465 => secure true
 
-console.log("SMTP config (no secrets):", {
-  smtpHost,
-  smtpPort,
-  smtpSecure,
-  smtpUser: process.env.SMTP_USER ? "set" : "MISSING",
-});
+    console.log("SMTP config:", {
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      userSet: !!process.env.SMTP_USER,
+    });
 
-const transporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: smtpSecure, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  // optional: melhora compatibilidade STARTTLS
-  tls: {
-    // se Hostinger usa certificados confiáveis, não precisa true/false, mas em testes às vezes útil:
-    rejectUnauthorized: false
-  }
-});
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
 
-    // prepara attachments (se houver)
+    // opcional: verificar conexão (rápido). Se preferir comente esta verificação.
+    try {
+      await transporter.verify();
+      console.log("SMTP verified OK");
+    } catch (verErr) {
+      console.warn("SMTP verify warning/error:", String(verErr).slice(0, 200));
+      // não retorna aqui porque há providers que não permitem verify; seguimos pra tentar enviar
+    }
+
+    // prepara attachments
     const attachments = [];
     if (files && Object.keys(files).length > 0) {
-      // formidable pode prover single file ou array dependendo do campo
+      // formidable pode fornecer um único arquivo ou array
       for (const key of Object.keys(files)) {
         const fileOrArray = files[key];
         const items = Array.isArray(fileOrArray) ? fileOrArray : [fileOrArray];
@@ -118,7 +132,7 @@ const transporter = nodemailer.createTransport({
       from: process.env.SMTP_FROM,
       to: process.env.TO_EMAIL,
       subject: `Novo formulário de escaneamento - ${fields.paciente || ""}`,
-      text: html.replace(/<[^>]*>/g, ""), // fallback
+      text: stripTags(html).slice(0, 1000), // fallback texto
       html,
       attachments,
     };
@@ -133,16 +147,18 @@ const transporter = nodemailer.createTransport({
       smtpSecure,
     });
 
+    // envia
     const info = await transporter.sendMail(mailOptions);
-    console.log("Enviado:", info.messageId);
+    console.log("Enviado:", info && info.messageId ? info.messageId : info);
 
-    return res.status(200).json({ ok: true, messageId: info.messageId });
+    return res.status(200).json({ ok: true, messageId: info.messageId || null });
   } catch (err) {
     console.error("Erro no send-scan:", err);
     return res.status(500).json({ error: "Erro ao processar envio", detail: String(err) });
   }
 }
 
+/* helpers */
 function escapeHtml(str) {
   if (!str) return "";
   return String(str)
@@ -152,3 +168,9 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
+
+function stripTags(html) {
+  if (!html) return "";
+  return String(html).replace(/<[^>]*>/g, "");
+}
+
