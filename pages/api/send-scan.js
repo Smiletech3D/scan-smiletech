@@ -1,113 +1,116 @@
 // pages/api/send-scan.js
-import { IncomingForm } from "formidable";
 import fs from "fs";
-import os from "os";
-import path from "path";
 import nodemailer from "nodemailer";
+import formidable from "formidable";
 
+// Disable Next.js body parser for this route so formidable can parse multipart
 export const config = {
   api: {
-    bodyParser: false // obrigatório para usar formidable
-  }
+    bodyParser: false,
+  },
 };
 
-function parseForm(req) {
-  return new Promise((resolve, reject) => {
-    const uploadDir = os.tmpdir();
-    const form = new IncomingForm({ multiples: true, uploadDir, keepExtensions: true });
-
-    const fields = {};
-    const files = [];
-
-    form.on("field", (name, value) => {
-      fields[name] = value;
+const parseForm = (req) =>
+  new Promise((resolve, reject) => {
+    const form = formidable({
+      multiples: true,
+      maxFileSize: 20 * 1024 * 1024, // 20 MB limit total per file (ajuste se quiser)
+      keepExtensions: true,
+      uploadDir: "/tmp", // funciona no Vercel durante execução
     });
 
-    form.on("file", (name, file) => {
-      // coletamos os arquivos
-      files.push({ fieldname: name, filepath: file.filepath || file.path, originalFilename: file.originalFilename || file.name });
+    form.parse(req, (err, fields, files) => {
+      if (err) return reject(err);
+      resolve({ fields, files });
     });
-
-    form.on("error", (err) => reject(err));
-    form.on("end", () => resolve({ fields, files }));
-
-    form.parse(req);
   });
-}
-
-function normalizeFiles(files) {
-  // já retornamos em array, apenas garantimos
-  return files || [];
-}
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   try {
     const { fields, files } = await parseForm(req);
 
-    // montar attachments para nodemailer
-    const allFiles = normalizeFiles(files);
-    const attachments = allFiles.map((f) => ({
-      filename: f.originalFilename || path.basename(f.filepath),
-      path: f.filepath
-    }));
-
-    // transporter baseado nas ENV vars
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-  },
-});
-
-    // opcional: verify para erros de conexão antecipados
-    try {
-      await transporter.verify();
-    } catch (verifyErr) {
-      console.error("send-scan: transporter verify failed", verifyErr);
-      return res.status(500).json({ error: `Erro na conexão SMTP: ${verifyErr.message}` });
-    }
-
-    // corpo do email
+    // Monta HTML do email com dados do formulário
     const html = `
-      <h2>Novo envio de escaneamento</h2>
-      <p><strong>Dentista:</strong> ${fields.dentistName || ""} ${fields.dentistLast || ""}</p>
-      <p><strong>Paciente:</strong> ${fields.patientName || ""} ${fields.patientLast || ""}</p>
-      <p><strong>Tipo:</strong> ${fields.scanType || ""}</p>
-      <p><strong>Conexão:</strong> ${fields.connection || ""}</p>
-      <p><strong>Implante:</strong> ${fields.implantInfo || ""}</p>
-      <p><strong>Comentários:</strong><br/>${(fields.comments || "").replace(/\n/g, "<br/>")}</p>
-      <p><strong>Link do escaneamento:</strong><br/><a href="${fields.link || ""}">${fields.link || ""}</a></p>
+      <h2>Novo envio - Formulário de Escaneamento</h2>
+      <ul>
+        <li><strong>Cirurgião:</strong> ${escapeHtml(fields.cirurgiao || "")}</li>
+        <li><strong>Paciente:</strong> ${escapeHtml(fields.paciente || "")}</li>
+        <li><strong>Tipo:</strong> ${escapeHtml(fields.tipo || "")}</li>
+        <li><strong>Implante / Observações:</strong> ${escapeHtml(fields.implante || "")}</li>
+        <li><strong>Link do escaneamento:</strong> ${escapeHtml(fields.link || "")}</li>
+      </ul>
     `;
 
-    const mailOptions = {
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to: process.env.TO_EMAIL || process.env.SMTP_USER,
-      subject: `Novo envio de escaneamento - ${fields.patientName || ""}`,
-      html,
-      attachments
-    };
+    // Configura o transporter usando variáveis de ambiente
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === "true",
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-
-    // opcional: remover arquivos temporários (os.tmpdir())
-    try {
-      for (const a of attachments) {
-        if (a.path && a.path.startsWith(os.tmpdir())) {
-          fs.unlink(a.path, () => {});
+    // Monta anexos a partir de files (formidable)
+    const attachments = [];
+    if (files && Object.keys(files).length > 0) {
+      // files pode ter único arquivo ou array
+      for (const key of Object.keys(files)) {
+        const item = files[key];
+        if (Array.isArray(item)) {
+          for (const f of item) {
+            attachments.push({
+              filename: f.originalFilename || f.newFilename || "file",
+              path: f.filepath || f.path,
+            });
+          }
+        } else {
+          attachments.push({
+            filename: item.originalFilename || item.newFilename || "file",
+            path: item.filepath || item.path,
+          });
         }
       }
-    } catch (e) {
-      // ignore
     }
 
+    const mailOptions = {
+      from: process.env.SMTP_FROM,
+      to: process.env.TO_EMAIL,
+      subject: `Novo Scan - ${fields.paciente || "Paciente"}`,
+      html,
+      attachments,
+    };
+
+    // Send mail
+    const info = await transporter.sendMail(mailOptions);
+
+    // Opcional: limpar arquivos temporários
+    for (const a of attachments) {
+      try {
+        fs.unlinkSync(a.path);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    console.log("Email enviado:", info.messageId);
     return res.status(200).json({ ok: true, messageId: info.messageId });
   } catch (err) {
-    console.error("send-scan error:", err);
-    return res.status(500).json({ error: err?.message || "server error" });
+    console.error("Erro em send-scan:", err);
+    // se for erro de conexão SMTP, env var incorreta é provável
+    return res.status(500).json({ error: String(err) });
   }
+}
+
+// função auxiliar para escapar HTML simples
+function escapeHtml(text = "") {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
