@@ -63,25 +63,37 @@ export default async function handler(req, res) {
     `;
 
     // Cria transporter
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = Number(process.env.SMTP_PORT || 0);
-    let smtpSecure = process.env.SMTP_SECURE;
-    if (typeof smtpSecure === "undefined" || smtpSecure === "") {
-      // deduz secure a partir da porta (465 -> secure)
-      smtpSecure = smtpPort === 465 ? true : false;
-    } else {
-      smtpSecure = smtpSecure === "true" || smtpSecure === true;
-    }
+    const smtpHost = process.env.SMTP_HOST || "";
+const smtpPort = Number(process.env.SMTP_PORT || 0);
+let smtpSecure = process.env.SMTP_SECURE;
 
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+if (typeof smtpSecure === "undefined" || smtpSecure === "") {
+  smtpSecure = (smtpPort === 465); // default secure= true for 465
+} else {
+  smtpSecure = smtpSecure === "true" || smtpSecure === true;
+}
+
+console.log("SMTP config (no secrets):", {
+  smtpHost,
+  smtpPort,
+  smtpSecure,
+  smtpUser: process.env.SMTP_USER ? "set" : "MISSING",
+});
+
+const transporter = nodemailer.createTransport({
+  host: smtpHost,
+  port: smtpPort,
+  secure: smtpSecure, // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  // optional: melhora compatibilidade STARTTLS
+  tls: {
+    // se Hostinger usa certificados confiáveis, não precisa true/false, mas em testes às vezes útil:
+    rejectUnauthorized: false
+  }
+});
 
     // prepara attachments (se houver)
     const attachments = [];
