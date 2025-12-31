@@ -304,7 +304,7 @@ export default function NewScan() {
         </div>
 
         <div style={styles.fieldRow}>
-          <label style={styles.label}>Comentários adicionais e link escaneamento</label>
+          <label style={styles.label}>Comentários adicionais</label>
           <textarea name="comentarios" style={{...styles.inputFull, height: 100}} value={comentarios} onChange={e => setComentarios(e.target.value)} />
         </div>
 
