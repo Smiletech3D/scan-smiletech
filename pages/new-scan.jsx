@@ -1,88 +1,135 @@
 // pages/new-scan.jsx
-import { useState } from "react";
+import React, { useState } from "react";
 
 export default function NewScan() {
-  const [status, setStatus] = useState("");
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState("");
+  const [formDataState, setFormDataState] = useState({});
+
+  const TIPOS = [
+    "Escaneamento sobre dente",
+    "Escaneamento de arco completo",
+    "Escaneamento arcada superior",
+    "Escaneamento arcada inferior",
+    "Escaneamento parcial (quadrante)",
+    "Escaneamento de modelo",
+    "Escaneamento de prótese",
+    "Escaneamento para planejamento cirúrgico",
+    "Outro"
+  ];
+
+  const CONEXOES = [
+    "HI Neodent",
+    "HE Neodent",
+    "Neodent Pilar custom",
+    "Straumann (Internal)",
+    "Straumann (External)",
+    "Nobel Active",
+    "Nobel Replace",
+    "Astra Tech",
+    "Ankylos",
+    "Camlog",
+    "Zimmer",
+    "Hexagonal externo",
+    "Hexagonal interno",
+    "Morse Taper",
+    "Conexão cônica generic",
+    "Pilar de cicatrização",
+    "Pilar anatômico",
+    "Outro"
+  ];
+
+  function onInput(e) {
+    setFormDataState({ ...formDataState, [e.target.name]: e.target.value });
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setStatus("Enviando...");
+    setMessage("");
+    setSending(true);
 
-    const formData = new FormData(e.target);
+    const formEl = e.currentTarget;
+    const fd = new FormData(formEl);
 
     try {
       const res = await fetch("/api/send-scan", {
         method: "POST",
-        body: formData,
+        body: fd,
       });
 
-      const text = await res.text(); // ⚠️ NÃO JSON
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Erro desconhecido");
 
-      if (!res.ok) {
-        console.error(text);
-        setStatus("Erro ao enviar formulário");
-        return;
-      }
-
-      setStatus("Formulário enviado com sucesso!");
-      e.target.reset();
+      setMessage("Enviado com sucesso ✅");
+      formEl.reset();
     } catch (err) {
-      console.error(err);
-      setStatus("Erro de rede ao enviar");
+      setMessage("Erro: " + (err.message || String(err)));
+    } finally {
+      setSending(false);
     }
   }
 
+  // estilo simples inline (basta colar, pode melhorar depois)
+  const style = {
+    container: { maxWidth: 720, margin: "24px auto", fontFamily: "Arial, serif", padding: "0 16px" },
+    heading: { fontSize: 30, marginBottom: 8 },
+    label: { display: "block", marginTop: 14, fontWeight: 700 },
+    input: { width: "100%", padding: "6px 8px", marginTop: 6, boxSizing: "border-box" },
+    twoCols: { display: "flex", gap: 8 },
+    smallInput: { flex: 1 },
+    button: { marginTop: 18, background: "#e67e22", color: "#fff", border: "none", padding: "10px 16px", cursor: "pointer" },
+    textarea: { width: "100%", minHeight: 90, padding: 8, boxSizing: "border-box" },
+    note: { marginTop: 12, color: "#b00" }
+  };
+
   return (
-    <div style={{ maxWidth: 900, margin: "40px auto", fontFamily: "serif" }}>
-      <h1>Formulário de Escaneamento</h1>
+    <div style={style.container}>
+      <h1 style={style.heading}>Formulário de Escaneamento</h1>
 
-      <form onSubmit={handleSubmit} encType="multipart/form-data">
-        <h3>Cirurgião Dentista</h3>
-        <input name="cirurgiao_nome" placeholder="Nome" required />
-        <input name="cirurgiao_sobrenome" placeholder="Sobrenome" required />
+      <form onSubmit={handleSubmit} encType="multipart/form-data" id="scanForm">
+        <label style={style.label}>Cirurgião Dentista</label>
+        <div style={style.twoCols}>
+          <input style={{...style.input, ...style.smallInput}} name="cirurgia_nome" placeholder="Nome" onChange={onInput} />
+          <input style={{...style.input, ...style.smallInput}} name="cirurgia_sobrenome" placeholder="Sobrenome" onChange={onInput} />
+        </div>
 
-        <h3>Paciente</h3>
-        <input name="paciente_nome" placeholder="Nome" required />
-        <input name="paciente_sobrenome" placeholder="Sobrenome" required />
+        <label style={style.label}>Paciente</label>
+        <div style={style.twoCols}>
+          <input style={{...style.input, ...style.smallInput}} name="paciente_nome" placeholder="Nome" onChange={onInput} />
+          <input style={{...style.input, ...style.smallInput}} name="paciente_sobrenome" placeholder="Sobrenome" onChange={onInput} />
+        </div>
 
-        <h3>Tipo de escaneamento</h3>
-        <select name="tipo_escaneamento" required>
-          <option value="">Selecione</option>
-          <option value="Escaneamento sobre dente">Escaneamento sobre dente</option>
-          <option value="Escaneamento sobre implante">Escaneamento sobre implante</option>
-          <option value="Escaneamento de modelo">Escaneamento de modelo</option>
+        <label style={style.label}>Tipo de escaneamento</label>
+        <select name="tipo" style={style.input} defaultValue={TIPOS[0]} onChange={onInput}>
+          {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
 
-        <h3>Conexão implante ou pilar</h3>
-        <select name="conexao_implante" required>
-          <option value="">Selecione</option>
-          <option value="HE 5.0 Neodent">HE 5.0 Neodent</option>
-          <option value="HI Neodent">HI Neodent</option>
-          <option value="Cone Morse">Cone Morse</option>
-          <option value="Outro">Outro</option>
+        <label style={style.label}>Conexão implante ou pilar</label>
+        <select name="conexao" style={style.input} defaultValue={CONEXOES[0]} onChange={onInput}>
+          {CONEXOES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
 
-        <h3>Informações do implante</h3>
-        <input name="implante_info" />
+        <label style={style.label}>Informar elementos sobre o implante / observações</label>
+        <input name="implante_info" style={style.input} onChange={onInput} placeholder="ex: diâmetro 3.5, comprimento 10mm, posição 23" />
 
-        <h3>Fotos obrigatórias</h3>
-        <input type="file" name="foto_frontal" required />
-        <input type="file" name="foto_escala" required />
+        <label style={style.label}>Fotos obrigatórias (frontal, escala de cor)</label>
+        <input style={style.input} name="foto_frontal" type="file" accept="image/*" required />
 
-        <h3>Arquivos adicionais (STL, PDF, imagens)</h3>
-        <input type="file" name="arquivos" multiple />
+        <label style={style.label}>Fotos complementares / anexos (STL, PDF, imagens)</label>
+        <input style={style.input} name="arquivos" type="file" multiple />
 
-        <h3>Comentários</h3>
-        <textarea name="comentarios" />
+        <label style={style.label}>Comentários adicionais e link do escaneamento</label>
+        <textarea name="comentarios" style={style.textarea} onChange={onInput} />
 
-        <h3>Link do escaneamento</h3>
-        <input name="link_escaneamento" type="url" />
+        <label style={style.label}>Link do escaneamento (opcional)</label>
+        <input style={style.input} name="link" placeholder="https://..." onChange={onInput} />
 
-        <br /><br />
-        <button type="submit">Enviar</button>
+        <button style={style.button} type="submit" disabled={sending}>
+          {sending ? "Enviando..." : "Enviar"}
+        </button>
+
+        {message && <div style={style.note}>{message}</div>}
       </form>
-
-      <p>{status}</p>
     </div>
   );
 }
