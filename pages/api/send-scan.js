@@ -1,82 +1,135 @@
+// pages/api/send-scan.js
 import nodemailer from "nodemailer";
-import formidable from "formidable";
 import fs from "fs";
+import { promisify } from "util";
+import formidable from "formidable";
+
+const readFile = promisify(fs.readFile);
 
 export const config = {
-  api: { bodyParser: false },
+  api: {
+    bodyParser: false, // obrigatório para usar formidable
+  },
 };
 
+const parseForm = (req) =>
+  new Promise((resolve, reject) => {
+    const form = new formidable.IncomingForm({ multiples: true, keepExtensions: true });
+    form.parse(req, (err, fields, files) => {
+      if (err) return reject(err);
+      resolve({ fields, files });
+    });
+  });
+
+function envMissing() {
+  const required = ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "SMTP_FROM", "TO_EMAIL"];
+  const missing = required.filter((k) => !process.env[k] || process.env[k] === "");
+  return missing;
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).send("Method not allowed");
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const required = [
-    "SMTP_HOST",
-    "SMTP_PORT",
-    "SMTP_USER",
-    "SMTP_PASS",
-    "SMTP_FROM",
-    "TO_EMAIL",
-  ];
-
-  const missing = required.filter((k) => !process.env[k]);
+  // valida envs
+  const missing = envMissing();
   if (missing.length) {
-    return res
-      .status(500)
-      .send("SMTP envs faltando: " + missing.join(", "));
+    console.error("SMTP envs faltando:", missing);
+    return res.status(500).json({ error: "SMTP envs faltando", missing });
   }
 
-  const form = formidable({ multiples: true });
+  try {
+    const { fields, files } = await parseForm(req);
+    console.log("Form fields:", Object.keys(fields));
+    console.log("Files keys:", Object.keys(files || {}));
 
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).send("Erro ao processar formulário");
+    // Monta HTML do email
+    const html = `
+      <h2>Novo envio - Formulário de Escaneamento</h2>
+      <ul>
+        <li><strong>Cirurgião:</strong> ${escapeHtml(fields.cirurgia_nome || "")} ${escapeHtml(fields.cirurgia_sobrenome || "")}</li>
+        <li><strong>Paciente:</strong> ${escapeHtml(fields.paciente_nome || "")} ${escapeHtml(fields.paciente_sobrenome || "")}</li>
+        <li><strong>Tipo:</strong> ${escapeHtml(fields.tipo || "")}</li>
+        <li><strong>Conexão:</strong> ${escapeHtml(fields.conexao || "")}</li>
+        <li><strong>Implante / Obs:</strong> ${escapeHtml(fields.implante_info || "")}</li>
+        <li><strong>Link do escaneamento:</strong> ${escapeHtml(fields.link || "")}</li>
+        <li><strong>Comentários:</strong> ${escapeHtml(fields.comentarios || "")}</li>
+      </ul>
+    `;
+
+    // cria transporter com envs
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = Number(process.env.SMTP_PORT || 0);
+    let smtpSecure = process.env.SMTP_SECURE;
+    // se SMTP_SECURE não setado, deduz a partir da porta (465 -> true)
+    if (typeof smtpSecure === "undefined" || smtpSecure === "") {
+      smtpSecure = smtpPort === 465;
+    } else {
+      smtpSecure = smtpSecure === "true" || smtpSecure === "1" || smtpSecure === true;
     }
 
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: process.env.SMTP_PORT === "465",
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
     });
 
+    // Prepara anexos a partir de files (formidable)
     const attachments = [];
-    for (const key in files) {
-      const f = Array.isArray(files[key]) ? files[key] : [files[key]];
-      f.forEach((file) => {
-        attachments.push({
-          filename: file.originalFilename,
-          content: fs.readFileSync(file.filepath),
-        });
-      });
+    if (files && Object.keys(files).length > 0) {
+      for (const key of Object.keys(files)) {
+        const fileOrArr = files[key];
+        const items = Array.isArray(fileOrArr) ? fileOrArr : [fileOrArr];
+        for (const f of items) {
+          if (!f || !f.filepath) continue;
+          const content = await readFile(f.filepath);
+          attachments.push({
+            filename: f.originalFilename || f.newFilename || "attachment",
+            content,
+            contentType: f.mimetype || undefined,
+          });
+        }
+      }
     }
 
-    const html = `
-      <h2>Novo envio - Formulário de Escaneamento</h2>
-      <ul>
-        <li><b>Cirurgião:</b> ${fields.cirurgiao_nome} ${fields.cirurgiao_sobrenome}</li>
-        <li><b>Paciente:</b> ${fields.paciente_nome} ${fields.paciente_sobrenome}</li>
-        <li><b>Tipo:</b> ${fields.tipo_escaneamento}</li>
-        <li><b>Conexão:</b> ${fields.conexao_implante}</li>
-        <li><b>Implante:</b> ${fields.implante_info}</li>
-        <li><b>Link:</b> ${fields.link_escaneamento}</li>
-      </ul>
-      <p>${fields.comentarios || ""}</p>
-    `;
-
-    await transporter.sendMail({
+    const mailOptions = {
       from: process.env.SMTP_FROM,
       to: process.env.TO_EMAIL,
-      subject: "Novo formulário de escaneamento",
+      subject: `Novo formulário de escaneamento - ${fields.paciente_nome || ""}`,
+      text: (html.replace(/<[^>]+>/g, "")).slice(0, 2000),
       html,
       attachments,
+    };
+
+    console.log("Enviando e-mail com opções:", {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      attachmentsCount: attachments.length,
+      smtpHost,
+      smtpPort,
+      smtpSecure,
     });
 
-    return res.status(200).send("OK");
-  });
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Enviado:", info && info.messageId);
+
+    return res.status(200).json({ ok: true, messageId: info && info.messageId });
+  } catch (err) {
+    console.error("Erro no send-scan:", err && err.stack ? err.stack : err);
+    return res.status(500).json({ error: "Erro ao processar envio", detail: String(err) });
+  }
 }
