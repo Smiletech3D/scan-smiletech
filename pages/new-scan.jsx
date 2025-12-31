@@ -42,7 +42,7 @@ export default function NewScan() {
           <Image src="/logo.png" alt="SmileTech 3D" width={220} height={60} />
         </div>
 
-        <h1>Formulário de Escaneamento</h1>
+        <h1>Formulário de OS/SCAN</h1>
 
         <form ref={formRef} onSubmit={handleSubmit} encType="multipart/form-data">
           <h3>Cirurgião Dentista</h3>
