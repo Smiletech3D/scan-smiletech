@@ -1,11 +1,1 @@
-/* novo estilo base para new-scan */
-.page {
-  background: #fff;
-  min-height: 100vh;
-  padding: 40px 20px;
-  font-family: Arial, Helvetica, sans-serif;
-  color: #222;
-}
-.form-grid { display: block; max-width: 900px; margin: 0 auto; }
-.form-group { margin-bottom: 18px; }
-button { background: #e67e22; color: #fff; border: none; padding: 8px 14px; border-radius: 4px; }
+
