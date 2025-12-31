@@ -1,63 +1,11 @@
+/* novo estilo base para new-scan */
 .page {
-  background: #f4f4f4;
+  background: #fff;
   min-height: 100vh;
-  padding: 40px;
-  display: flex;
-  justify-content: center;
+  padding: 40px 20px;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #222;
 }
-
-.card {
-  background: white;
-  max-width: 720px;
-  width: 100%;
-  padding: 32px;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.1);
-}
-
-.logo {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-h1 {
-  text-align: center;
-  margin-bottom: 24px;
-}
-
-h3 {
-  margin-top: 24px;
-}
-
-.row {
-  display: flex;
-  gap: 12px;
-}
-
-input, select, textarea {
-  width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-}
-
-button {
-  margin-top: 24px;
-  width: 100%;
-  padding: 12px;
-  background: #f49d4f;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.6;
-}
-
-.status {
-  margin-top: 16px;
-  text-align: center;
-  font-weight: bold;
-}
+.form-grid { display: block; max-width: 900px; margin: 0 auto; }
+.form-group { margin-bottom: 18px; }
+button { background: #e67e22; color: #fff; border: none; padding: 8px 14px; border-radius: 4px; }
