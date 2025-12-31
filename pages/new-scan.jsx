@@ -70,6 +70,7 @@ export default function NewScan() {
 
   // VITA classical common shades (adapte se quiser)
   const VITA_SHADES = [
+    "BL1","BL2","BL3","BL4",
     "A1","A2","A3","A3.5","A4",
     "B1","B2","B3","B4",
     "C1","C2","C3","C4",
