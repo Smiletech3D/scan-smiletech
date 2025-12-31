@@ -1,3 +1,4 @@
+// pages/api/send-scan.js
 import nodemailer from "nodemailer";
 import fs from "fs";
 import { promisify } from "util";
@@ -5,7 +6,7 @@ import formidable from "formidable";
 
 const readFile = promisify(fs.readFile);
 
-// Next.js: desativa o body parser para permitir formidable
+// Required for formidable in Next.js API routes
 export const config = {
   api: {
     bodyParser: false,
@@ -13,14 +14,14 @@ export const config = {
 };
 
 /*
-ENV VARS (defina no Vercel / .env.local - NUNCA comite senhas):
-SMTP_HOST
-SMTP_PORT
-SMTP_SECURE   (string "true" or "false", optional; fallback based on port)
-SMTP_USER
-SMTP_PASS
-SMTP_FROM
-TO_EMAIL
+  Required ENV VARS (set in Vercel project settings or .env.local for local dev)
+  SMTP_HOST
+  SMTP_PORT
+  SMTP_SECURE   (optional: "true" or "false"; if omitted, port 465 => true)
+  SMTP_USER
+  SMTP_PASS
+  SMTP_FROM
+  TO_EMAIL
 */
 
 const parseForm = (req) =>
@@ -45,24 +46,58 @@ function envMissing() {
   return missing;
 }
 
+function isTruthyString(val) {
+  if (typeof val === "string") {
+    const v = val.toLowerCase().trim();
+    return v === "true" || v === "1";
+  }
+  return !!val;
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function stripTags(html) {
+  if (!html) return "";
+  return String(html).replace(/<[^>]*>/g, "");
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // valida envs
+  // Check envs
   const missing = envMissing();
   if (missing.length) {
+    // Log which envs are present/missing (but don't print values)
+    const allCheck = {
+      SMTP_HOST: !!process.env.SMTP_HOST,
+      SMTP_PORT: !!process.env.SMTP_PORT,
+      SMTP_SECURE: !!process.env.SMTP_SECURE,
+      SMTP_USER: !!process.env.SMTP_USER,
+      SMTP_PASS: !!process.env.SMTP_PASS,
+      SMTP_FROM: !!process.env.SMTP_FROM,
+      TO_EMAIL: !!process.env.TO_EMAIL,
+    };
     console.error("SMTP envs faltando:", missing);
+    console.log("Env presence:", allCheck);
     return res.status(500).json({ error: "SMTP envs faltando", missing });
   }
 
   try {
     const { fields, files } = await parseForm(req);
-    console.log("Form fields:", Object.keys(fields));
-    console.log("Files:", Object.keys(files));
+    console.log("Form fields keys:", Object.keys(fields));
+    console.log("Files keys:", Object.keys(files));
 
-    // monta HTML do email
+    // Build email HTML
     const html = `
       <h2>Novo envio - Formulário de Escaneamento</h2>
       <ul>
@@ -74,20 +109,23 @@ export default async function handler(req, res) {
       </ul>
     `;
 
-    // cria transporter - com logs e parsing de envs
+    // Configure transporter
     const smtpHost = process.env.SMTP_HOST;
     const smtpPort = Number(process.env.SMTP_PORT || 0);
 
-    let smtpSecure = process.env.SMTP_SECURE;
-    if (smtpSecure === "true" || smtpSecure === "1" || smtpSecure === true) smtpSecure = true;
-    else if (smtpSecure === "false" || smtpSecure === "0" || smtpSecure === false) smtpSecure = false;
-    else smtpSecure = smtpPort === 465; // fallback: porta 465 => secure true
+    // Determine secure flag
+    let smtpSecure;
+    if (typeof process.env.SMTP_SECURE !== "undefined") {
+      smtpSecure = isTruthyString(process.env.SMTP_SECURE);
+    } else {
+      smtpSecure = smtpPort === 465; // default secure for 465
+    }
 
-    console.log("SMTP config:", {
-      host: smtpHost,
+    console.log("SMTP config (presence only):", {
+      host: !!smtpHost,
       port: smtpPort,
       secure: smtpSecure,
-      userSet: !!process.env.SMTP_USER,
+      user: !!process.env.SMTP_USER,
     });
 
     const transporter = nodemailer.createTransport({
@@ -100,19 +138,18 @@ export default async function handler(req, res) {
       },
     });
 
-    // opcional: verificar conexão (rápido). Se preferir comente esta verificação.
+    // Try verify (non-fatal)
     try {
       await transporter.verify();
       console.log("SMTP verified OK");
-    } catch (verErr) {
-      console.warn("SMTP verify warning/error:", String(verErr).slice(0, 200));
-      // não retorna aqui porque há providers que não permitem verify; seguimos pra tentar enviar
+    } catch (errVerify) {
+      // Some providers block verify; we continue and try to send (but log the error)
+      console.warn("SMTP verify error (continuing):", String(errVerify).slice(0, 300));
     }
 
-    // prepara attachments
+    // Prepare attachments (read files from disk)
     const attachments = [];
     if (files && Object.keys(files).length > 0) {
-      // formidable pode fornecer um único arquivo ou array
       for (const key of Object.keys(files)) {
         const fileOrArray = files[key];
         const items = Array.isArray(fileOrArray) ? fileOrArray : [fileOrArray];
@@ -132,45 +169,25 @@ export default async function handler(req, res) {
       from: process.env.SMTP_FROM,
       to: process.env.TO_EMAIL,
       subject: `Novo formulário de escaneamento - ${fields.paciente || ""}`,
-      text: stripTags(html).slice(0, 1000), // fallback texto
+      text: stripTags(html).slice(0, 2000),
       html,
       attachments,
     };
 
-    console.log("Enviando e-mail com opções:", {
-      from: mailOptions.from,
-      to: mailOptions.to,
+    // Log limited send info (no secrets)
+    console.log("Sending email:", {
+      from: !!mailOptions.from,
+      to: !!mailOptions.to,
       subject: mailOptions.subject,
       attachmentsCount: attachments.length,
-      smtpHost,
-      smtpPort,
-      smtpSecure,
     });
 
-    // envia
     const info = await transporter.sendMail(mailOptions);
-    console.log("Enviado:", info && info.messageId ? info.messageId : info);
+    console.log("Email sent, id:", info && info.messageId ? info.messageId : info);
 
     return res.status(200).json({ ok: true, messageId: info.messageId || null });
   } catch (err) {
     console.error("Erro no send-scan:", err);
-    return res.status(500).json({ error: "Erro ao processar envio", detail: String(err) });
+    return res.status(500).json({ error: "Erro ao processar envio", detail: String(err).slice(0, 1000) });
   }
 }
-
-/* helpers */
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function stripTags(html) {
-  if (!html) return "";
-  return String(html).replace(/<[^>]*>/g, "");
-}
-
