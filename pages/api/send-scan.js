@@ -82,7 +82,7 @@ export default async function handler(req, res) {
 
     // Monta HTML do e-mail (ajuste conforme quiser)
     const html = `
-      <h2>Novo envio - Formulário de Escaneamento</h2>
+      <h2>Novo envio - Formulário de Ordem de Serviço/Escaneamento</h2>
       <ul>
         <li><strong>Cirurgião:</strong> ${escapeHtml(cirurgia_nome)} ${escapeHtml(cirurgia_sobrenome)}</li>
         <li><strong>Paciente:</strong> ${escapeHtml(paciente_nome)} ${escapeHtml(paciente_sobrenome)}</li>
