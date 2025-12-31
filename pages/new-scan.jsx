@@ -206,6 +206,25 @@ export default function NewScan() {
   return (
     <div style={styles.container}>
       <h1 style={{ fontSize: 32 }}>Formulário de Ordem de Serviço/Escaneamento</h1>
+{/* --- INÍCIO header visual (adicionar acima do <form>) --- */}
+<div className="scan-wrap">
+  <div className="scan-header" style={{marginBottom: 10}}>
+    <img className="logo" src="/logo.png" alt="SmileTech3D logo" />
+    <div>
+      <div className="title">Formulário de Escaneamento</div>
+      <div className="subtitle">Preencha os dados e anexe as imagens / STL. Seus campos e envio permanecem inalterados.</div>
+    </div>
+  </div>
+
+  {/* MANTENHA SEU <form> AQUI — se quiser usar o grid, dentro do form adicione uma <div className="form-grid"> ao redor dos grupos */}
+  <!-- Exemplo: -->
+  {/* <form ...> 
+       <div className="form-grid">
+         ... seus .form-group ... 
+       </div>
+     </form> */}
+</div>
+{/* --- FIM header visual --- */}
 
       <form onSubmit={handleSubmit}>
         <div style={styles.fieldRow}>
