@@ -193,7 +193,7 @@ export default function NewScan() {
 
   return (
     <div style={styles.container}>
-      <h1 style={{ fontSize: 32 }}>Formulário de Escaneamento</h1>
+      <h1 style={{ fontSize: 32 }}>Formulário de Ordem de Serviço/Escaneamento</h1>
 
       <form onSubmit={handleSubmit}>
         <div style={styles.fieldRow}>
