@@ -41,9 +41,19 @@ export default function NewScan() {
   ];
 
   const CONEXOES = [
+    "HI SIN",
+    "HE SIN",
+    "CM SIN",
+    "CM 16 SIN",
+    "GM Neodent",
+    "CM Neodent",
     "HI Neodent",
     "HE Neodent",
     "Neodent Pilar custom",
+    "HI INTRAOSS",
+    "HE INTRAOSS",
+    "CM INTRAOSS",
+    "Grand Oss",
     "Straumann (Internal)",
     "Straumann (External)",
     "Nobel Active",
