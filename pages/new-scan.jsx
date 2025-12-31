@@ -1,100 +1,88 @@
-import { useState, useRef } from "react";
+// pages/new-scan.jsx
+import { useState } from "react";
 
 export default function NewScan() {
   const [status, setStatus] = useState("");
-  const [sending, setSending] = useState(false);
-  const formRef = useRef();
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setSending(true);
-    setStatus("");
+    setStatus("Enviando...");
 
-    const formElem = formRef.current;
-    const fd = new FormData(formElem);
+    const formData = new FormData(e.target);
 
     try {
       const res = await fetch("/api/send-scan", {
         method: "POST",
-        body: fd
+        body: formData,
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        setStatus("Enviado com sucesso!");
-        formElem.reset();
-      } else {
-        setStatus(data?.error || "Erro ao enviar");
+      const text = await res.text(); // ⚠️ NÃO JSON
+
+      if (!res.ok) {
+        console.error(text);
+        setStatus("Erro ao enviar formulário");
+        return;
       }
+
+      setStatus("Formulário enviado com sucesso!");
+      e.target.reset();
     } catch (err) {
-      setStatus(err.message || "Erro de rede");
-    } finally {
-      setSending(false);
+      console.error(err);
+      setStatus("Erro de rede ao enviar");
     }
   }
 
   return (
-    <div style={{ maxWidth: 760, margin: "24px auto", padding: 24 }}>
+    <div style={{ maxWidth: 900, margin: "40px auto", fontFamily: "serif" }}>
       <h1>Formulário de Escaneamento</h1>
-      <form ref={formRef} onSubmit={handleSubmit} encType="multipart/form-data">
-        <label>Nome do Cirurgião Dentista</label><br/>
-        <input name="dentistName" placeholder="Nome" style={{width:"48%", marginRight:8}}/>
-        <input name="dentistLast" placeholder="Sobrenome" style={{width:"48%"}}/>
-        <br/><br/>
 
-        <label>Nome do Paciente</label><br/>
-        <input name="patientName" placeholder="Nome" style={{width:"48%", marginRight:8}}/>
-        <input name="patientLast" placeholder="Sobrenome" style={{width:"48%"}}/>
-        <br/><br/>
+      <form onSubmit={handleSubmit} encType="multipart/form-data">
+        <h3>Cirurgião Dentista</h3>
+        <input name="cirurgiao_nome" placeholder="Nome" required />
+        <input name="cirurgiao_sobrenome" placeholder="Sobrenome" required />
 
-        <label>Tipo de escaneamento</label><br/>
-        <select name="scanType" defaultValue="">
-          <option value="">Selecione:</option>
+        <h3>Paciente</h3>
+        <input name="paciente_nome" placeholder="Nome" required />
+        <input name="paciente_sobrenome" placeholder="Sobrenome" required />
+
+        <h3>Tipo de escaneamento</h3>
+        <select name="tipo_escaneamento" required>
+          <option value="">Selecione</option>
           <option value="Escaneamento sobre dente">Escaneamento sobre dente</option>
-          <option value="Escaneamento sobre implantes">Escaneamento sobre implantes</option>
+          <option value="Escaneamento sobre implante">Escaneamento sobre implante</option>
+          <option value="Escaneamento de modelo">Escaneamento de modelo</option>
         </select>
-        <br/><br/>
 
-        <label>Escolha conexão implante ou pilar</label><br/>
-        <select name="connection" defaultValue="">
-          <option value="">Selecione:</option>
+        <h3>Conexão implante ou pilar</h3>
+        <select name="conexao_implante" required>
+          <option value="">Selecione</option>
           <option value="HE 5.0 Neodent">HE 5.0 Neodent</option>
-          <option value="Cone Morse Neodent">Cone Morse Neodent</option>
+          <option value="HI Neodent">HI Neodent</option>
+          <option value="Cone Morse">Cone Morse</option>
+          <option value="Outro">Outro</option>
         </select>
-        <br/><br/>
 
-        <label>Informar elementos sobre o implante</label><br/>
-        <input name="implantInfo" placeholder="Ex.: marca, diâmetro, altura" style={{width:"100%"}}/>
-        <br/><br/>
+        <h3>Informações do implante</h3>
+        <input name="implante_info" />
 
-        <label>Foto frontal (sorriso) *</label><br/>
-        <input type="file" name="frontPhoto" accept="image/*" />
-        <br/><br/>
+        <h3>Fotos obrigatórias</h3>
+        <input type="file" name="foto_frontal" required />
+        <input type="file" name="foto_escala" required />
 
-        <label>Foto com escala de cor *</label><br/>
-        <input type="file" name="colorPhoto" accept="image/*" />
-        <br/><br/>
+        <h3>Arquivos adicionais (STL, PDF, imagens)</h3>
+        <input type="file" name="arquivos" multiple />
 
-        <label>Arquivos (fotos, STL, PDF) — múltiplos</label><br/>
-        <input type="file" name="attachments" multiple />
-        <br/><br/>
+        <h3>Comentários</h3>
+        <textarea name="comentarios" />
 
-        <label>Comentários adicionais e link escaneamento</label><br/>
-        <textarea name="comments" rows="4" style={{width:"100%"}} placeholder="Digite aqui"></textarea>
-        <br/><br/>
+        <h3>Link do escaneamento</h3>
+        <input name="link_escaneamento" type="url" />
 
-        <label>Link do escaneamento (opcional)</label><br/>
-        <input name="link" style={{width:"100%"}} placeholder="https://..." />
-        <br/><br/>
-
-        <button type="submit" disabled={sending} style={{padding:"10px 18px", background:"#f49d4f", border:"none", color:"#fff"}}>
-          {sending ? "Enviando..." : "Enviar"}
-        </button>
-
-        <div style={{marginTop:12}}>
-          {status && <span>{status}</span>}
-        </div>
+        <br /><br />
+        <button type="submit">Enviar</button>
       </form>
+
+      <p>{status}</p>
     </div>
   );
 }
