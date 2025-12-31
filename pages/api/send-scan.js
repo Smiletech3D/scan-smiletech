@@ -1,133 +1,184 @@
-import nodemailer from "nodemailer";
-import fs from "fs";
-import { promisify } from "util";
-import formidable from "formidable";
+// pages/new-scan.jsx
+import { useState } from "react";
 
-const readFile = promisify(fs.readFile);
+export default function NewScan() {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState(null);
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMessage(null);
+    setLoading(true);
 
-const parseForm = (req) =>
-  new Promise((resolve, reject) => {
-    const form = new formidable.IncomingForm({
-      multiples: true,
-      keepExtensions: true,
-    });
+    const form = e.currentTarget;
+    const formData = new FormData(form);
 
-    form.parse(req, (err, fields, files) => {
-      if (err) return reject(err);
-      resolve({ fields, files });
-    });
-  });
+    try {
+      const resp = await fetch("/api/send-scan", {
+        method: "POST",
+        body: formData, // multipart/form-data automatically
+      });
 
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const requiredEnvs = [
-    "SMTP_HOST",
-    "SMTP_PORT",
-    "SMTP_USER",
-    "SMTP_PASS",
-    "SMTP_FROM",
-    "TO_EMAIL",
-  ];
-
-  const missing = requiredEnvs.filter((e) => !process.env[e]);
-  if (missing.length) {
-    console.error("SMTP envs faltando:", missing);
-    return res.status(500).json({
-      error: "SMTP envs faltando",
-      missing,
-    });
-  }
-
-  try {
-    const { fields, files } = await parseForm(req);
-
-    // 🔥 MAPEAMENTO CORRETO DOS CAMPOS DO FORMULÁRIO
-    const cirurgiaoNome = `${fields.cirurgiao_nome || ""} ${fields.cirurgiao_sobrenome || ""}`.trim();
-    const pacienteNome = `${fields.paciente_nome || ""} ${fields.paciente_sobrenome || ""}`.trim();
-
-    const html = `
-      <h2>Novo envio - Formulário de Escaneamento</h2>
-      <ul>
-        <li><strong>Cirurgião:</strong> ${escapeHtml(cirurgiaoNome)}</li>
-        <li><strong>Paciente:</strong> ${escapeHtml(pacienteNome)}</li>
-        <li><strong>Tipo de escaneamento:</strong> ${escapeHtml(fields.tipo_escaneamento)}</li>
-        <li><strong>Conexão implante/pilar:</strong> ${escapeHtml(fields.conexao_implante)}</li>
-        <li><strong>Implante / Observações:</strong> ${escapeHtml(fields.implante_info)}</li>
-        <li><strong>Comentários:</strong> ${escapeHtml(fields.comentarios)}</li>
-        <li><strong>Link do escaneamento:</strong> ${escapeHtml(fields.link_escaneamento)}</li>
-      </ul>
-    `;
-
-    const smtpPort = Number(process.env.SMTP_PORT);
-    const smtpSecure =
-      process.env.SMTP_SECURE !== undefined
-        ? process.env.SMTP_SECURE === "true"
-        : smtpPort === 465;
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: smtpPort,
-      secure: smtpSecure,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
-    // 📎 Anexos
-    const attachments = [];
-    for (const key of Object.keys(files || {})) {
-      const fileOrArray = files[key];
-      const arr = Array.isArray(fileOrArray) ? fileOrArray : [fileOrArray];
-
-      for (const f of arr) {
-        if (!f?.filepath) continue;
-        attachments.push({
-          filename: f.originalFilename || "arquivo",
-          content: await readFile(f.filepath),
-          contentType: f.mimetype,
+      const data = await resp.json();
+      if (resp.ok) {
+        setMessage({ type: "success", text: "Enviado com sucesso!" });
+        form.reset();
+      } else {
+        setMessage({
+          type: "error",
+          text:
+            (data && data.error) ||
+            `Erro no envio (${resp.status}). Veja console para detalhes.`,
         });
+        console.error("Resposta do servidor:", data);
       }
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: "error", text: `Erro de rede: ${String(err)}` });
+    } finally {
+      setLoading(false);
     }
-
-    const mailOptions = {
-      from: process.env.SMTP_FROM,
-      to: process.env.TO_EMAIL,
-      subject: `Novo formulário de escaneamento - ${pacienteNome}`,
-      html,
-      text: html.replace(/<[^>]+>/g, ""),
-      attachments,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-
-    return res.status(200).json({
-      ok: true,
-      messageId: info.messageId,
-    });
-  } catch (err) {
-    console.error("Erro no envio:", err);
-    return res.status(500).json({
-      error: "Erro ao enviar email",
-      detail: String(err),
-    });
   }
+
+  return (
+    <div style={{ maxWidth: 920, margin: "24px auto", fontFamily: "serif" }}>
+      <h1>Formulário de Escaneamento</h1>
+
+      <form onSubmit={handleSubmit} encType="multipart/form-data">
+        <fieldset style={{ marginBottom: 16 }}>
+          <legend>Dados do cirurgião</legend>
+          <label>
+            Nome (primeiro):
+            <input name="cirurgiao_nome" type="text" />
+          </label>
+          <br />
+          <label>
+            Sobrenome:
+            <input name="cirurgiao_sobrenome" type="text" />
+          </label>
+        </fieldset>
+
+        <fieldset style={{ marginBottom: 16 }}>
+          <legend>Dados do paciente</legend>
+          <label>
+            Nome (primeiro):
+            <input name="paciente_nome" type="text" />
+          </label>
+          <br />
+          <label>
+            Sobrenome:
+            <input name="paciente_sobrenome" type="text" />
+          </label>
+        </fieldset>
+
+        <fieldset style={{ marginBottom: 16 }}>
+          <legend>Escaneamento</legend>
+
+          <label>
+            Tipo de escaneamento:
+            <select name="tipo_escaneamento" defaultValue="">
+              <option value="" disabled>
+                Selecione...
+              </option>
+              <option value="escaneamento_sobre_dente">
+                Escaneamento sobre dente
+              </option>
+              <option value="escaneamento_sobre_pilar">
+                Escaneamento sobre pilar
+              </option>
+              <option value="escaneamento_modelo">Escaneamento de modelo</option>
+              <option value="escaneamento_intraoral">
+                Escaneamento intraoral
+              </option>
+              <option value="escaneamento_interno">Escaneamento interno</option>
+            </select>
+          </label>
+          <br />
+
+          <label>
+            Escolha conexão implante ou pilar:
+            <select name="conexao_implante" defaultValue="">
+              <option value="" disabled>
+                Selecione a conexão...
+              </option>
+              <option value="HE_5_0_Neodent">HE 5.0 Neodent</option>
+              <option value="conexao_externa">Conexão externa</option>
+              <option value="conexao_interna">Conexão interna</option>
+              <option value="pilar_personalizado">Pilar personalizado</option>
+              <option value="pilar_stock">Pilar stock</option>
+              <option value="conexao_custom">Outra / custom</option>
+            </select>
+          </label>
+          <br />
+
+          <label>
+            Informar elementos sobre o implante:
+            <input name="implante_info" type="text" />
+          </label>
+        </fieldset>
+
+        <fieldset style={{ marginBottom: 16 }}>
+          <legend>Arquivos (imagens, STL, PDF)</legend>
+
+          <label>
+            Foto frontal (sorriso) *
+            <input name="foto_frontal" type="file" accept="image/*" />
+          </label>
+          <br />
+          <label>
+            Foto com escala de cor *
+            <input name="foto_escala" type="file" accept="image/*" />
+          </label>
+          <br />
+          <label>
+            Arquivos (fotos, STL, PDF) — múltiplos
+            <input name="arquivos" type="file" multiple />
+          </label>
+        </fieldset>
+
+        <fieldset style={{ marginBottom: 16 }}>
+          <legend>Outros</legend>
+          <label>
+            Comentários adicionais e link escaneamento:
+            <textarea name="comentarios" rows="4" />
+          </label>
+          <br />
+          <label>
+            Link do escaneamento (opcional)
+            <input name="link_escaneamento" type="url" placeholder="https://..." />
+          </label>
+        </fieldset>
+
+        <div style={{ marginTop: 16 }}>
+          <button type="submit" disabled={loading}>
+            {loading ? "Enviando..." : "Enviar"}
+          </button>
+        </div>
+
+        {message && (
+          <div
+            role="status"
+            style={{
+              marginTop: 12,
+              color: message.type === "error" ? "crimson" : "green",
+            }}
+          >
+            {message.text}
+          </div>
+        )}
+      </form>
+
+      <p style={{ color: "#666", marginTop: 20 }}>
+        Observações:
+        <br />
+        • Os <strong>names</strong> do formulário estão alinhados com o servidor:
+        <code>cirurgiao_nome</code>, <code>cirurgiao_sobrenome</code>,{" "}
+        <code>paciente_nome</code>, <code>paciente_sobrenome</code>,{" "}
+        <code>tipo_escaneamento</code>, <code>conexao_implante</code>,{" "}
+        <code>implante_info</code>, <code>comentarios</code>,{" "}
+        <code>link_escaneamento</code>, e inputs de arquivos:
+        <code>foto_frontal</code>, <code>foto_escala</code>, <code>arquivos</code>.
+      </p>
+    </div>
+  );
 }
