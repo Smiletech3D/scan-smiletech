@@ -1,4 +1,5 @@
 // pages/new-scan.jsx
+import "../styles/new-scan.css";
 import React, { useState, useEffect } from "react";
 
 export default function NewScan() {
