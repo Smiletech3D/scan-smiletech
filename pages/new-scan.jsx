@@ -58,15 +58,41 @@ export default function NewScan() {
     if (btn) btn.classList.toggle("selected");
   }
 
-  return (
-    <div className="page">
-      <div className="card">
-        <div className="logo-row">
-          {/* Se quiser, coloque sua logo em public/logo.png e use <img src="/logo.png" alt="logo" /> */}
-          <h1>Formulário de Escaneamento</h1>
-        </div>
+  *** Begin Patch
+*** Update File: pages/new-scan.jsx
+@@
+   return (
+     <div className="page">
+       <div className="card">
+         <div className="logo-row">
+-          {/* Se quiser, coloque sua logo em public/logo.png e use <img src="/logo.png" /> */}
++          {/* Se quiser, coloque sua logo em public/logo.png e use <img src="/logo.png" /> */}
+           <h1>Formulário de Escaneamento</h1>
+         </div>
+ 
+         <form ref={formRef} onSubmit={handleSubmit} className="scan-form" encType="multipart/form-data">
+@@
+-          <div className="form-actions">
+-            <!-- Comentário HTML removido -->
+-            <button type="submit" disabled={sending}>
+-              {sending ? "Enviando..." : "Enviar"}
+-            </button>
+-            <div className="status">{status}</div>
+-          </div>
++          <div className="form-actions">
++            <button type="submit" disabled={sending}>
++              {sending ? "Enviando..." : "Enviar"}
++            </button>
++            <div className="status">{status}</div>
++          </div>
+ 
+         </form>
+       </div>
+     </div>
+   );
+ }
+*** End Patch
 
-        <form ref={formRef} onSubmit={handleSubmit} className="scan-form" encType="multipart/form-data">
           <div className="form-group">
             <label>Cirurgião Dentista</label>
             <input name="cirurgia_nome" placeholder="Nome" />
