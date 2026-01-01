@@ -73,7 +73,6 @@ export default function NewScan() {
          <form ref={formRef} onSubmit={handleSubmit} className="scan-form" encType="multipart/form-data">
 @@
 -          <div className="form-actions">
--            <!-- Comentário HTML removido -->
 -            <button type="submit" disabled={sending}>
 -              {sending ? "Enviando..." : "Enviar"}
 -            </button>
