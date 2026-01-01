@@ -1,68 +1,142 @@
-.page {
-  background: #faf9f7;
-  min-height: 100vh;
-  padding: 32px;
-  display: flex;
-  justify-content: center;
-}
-
-.card {
-  background: #ffffff;
-  max-width: 960px;
-  width: 100%;
-  padding: 28px;
-  border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-}
-
-h1 {
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.form-group {
-  margin-bottom: 18px;
-}
-
-label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-
-input,
-select,
-textarea {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-textarea {
-  resize: vertical;
-}
-
-.form-actions {
-  margin-top: 20px;
-}
-
-button {
-  background: #e57a1f;
-  color: #fff;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-button:disabled {
-  opacity: 0.6;
-}
-
-.status {
-  margin-top: 10px;
-  font-weight: bold;
-  color: #2e7d32;
-}
+*** Begin Patch
+*** Update File: styles/new-scan.css
+@@
+-.page {
+-  background: #faf9f7;
+-  min-height: 100vh;
+-  padding: 32px;
+-  display: flex;
+-  justify-content: center;
+-}
+-
+-.card {
+-  background: #ffffff;
+-  max-width: 720px;
+-  width: 100%;
+-  padding: 28px;
+-  border-radius: 8px;
+-  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+-}
+-
+-h1 {
+-  margin-bottom: 20px;
+-  text-align: center;
+-}
+-
+-.form-group {
+-  margin-bottom: 18px;
+-}
+-
+-label {
+-  display: block;
+-  font-weight: bold;
+-  margin-bottom: 6px;
+-}
+-
+-input, select, textarea {
+-  width: 100%;
+-  padding: 8px 10px;
+-  border: 1px solid #ddd;
+-  border-radius: 4px;
+-  box-sizing: border-box;
+-}
+-
+-.odontograma {
+-  display: grid;
+-  grid-template-columns: repeat(7, 1fr);
+-  gap: 8px;
+-  margin-bottom: 12px;
+-}
+-
+-.btn {
+-  display: inline-block;
+-  padding: 8px 12px;
+-  border: 1px solid #ccc;
+-  background: #fff;
+-  border-radius: 6px;
+-}
+-
+-.btn.selected {
+-  background: #f0b36b;
+-  color: #fff;
+-}
+-
+-.form-actions {
+-  margin-top: 12px;
+-  display: flex;
+-  align-items: center;
+-  gap: 12px;
+-}
+-
+-.status { margin-top: 12px; font-weight: bold; color: #0b3; }
++/* cleaned CSS for new-scan page - no imports, no problematic comments */
++.page {
++  background: #faf9f7;
++  min-height: 100vh;
++  padding: 32px;
++  display: flex;
++  justify-content: center;
++}
++
++.card {
++  background: #ffffff;
++  max-width: 720px;
++  width: 100%;
++  padding: 28px;
++  border-radius: 8px;
++  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
++}
++
++h1 {
++  margin-bottom: 20px;
++  text-align: center;
++}
++
++.form-group {
++  margin-bottom: 18px;
++}
++
++label {
++  display: block;
++  font-weight: bold;
++  margin-bottom: 6px;
++}
++
++input, select, textarea {
++  width: 100%;
++  padding: 8px 10px;
++  border: 1px solid #ddd;
++  border-radius: 4px;
++  box-sizing: border-box;
++}
++
++.odontograma {
++  display: grid;
++  grid-template-columns: repeat(7, 1fr);
++  gap: 8px;
++  margin-bottom: 12px;
++}
++
++.btn {
++  display: inline-block;
++  padding: 8px 12px;
++  border: 1px solid #ccc;
++  background: #fff;
++  border-radius: 6px;
++  cursor: pointer;
++}
++
++.btn.selected {
++  background: #f0b36b;
++  color: #fff;
++}
++
++.form-actions {
++  margin-top: 12px;
++  display: flex;
++  align-items: center;
++  gap: 12px;
++}
++
++.status { margin-top: 12px; font-weight: bold; color: #2e7d32; }
+*** End Patch
