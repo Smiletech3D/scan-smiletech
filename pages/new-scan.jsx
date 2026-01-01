@@ -62,8 +62,7 @@ export default function NewScan() {
     if (btn) btn.classList.toggle("selected");
   }
 
-  *** Begin Patch
-*** Update File: pages/new-scan.jsx
+ pages/new-scan.jsx
 @@
    return (
      <div className="page">
@@ -94,7 +93,6 @@ export default function NewScan() {
      </div>
    );
  }
-*** End Patch
 
           <div className="form-group">
             <label>Cirurgião Dentista</label>
