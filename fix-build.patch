@@ -1,0 +1,247 @@
+*** Begin Patch
+*** Update File: pages/new-scan.jsx
+@@
+-import { useState, useRef } from "react";
+-import Image from "next/image";
+-import "../styles/new-scan.css";
+-
+-export default function NewScan() {
+-  const [status, setStatus] = useState("");
+-  const [sending, setSending] = useState(false);
+-  const formRef = useRef(null);
+-
+-  async function handleSubmit(e) {
+-    e.preventDefault();
+-    setSending(true);
+-    setStatus("");
+-
+-    const formData = new FormData(formRef.current);
+-
+-    try {
+-      const res = await fetch("/api/send-scan", {
+-        method: "POST",
+-        body: formData,
+-      });
+-
+-      const data = await res.json();
+-
+-      if (!res.ok) {
+-        setStatus(data.error || "Erro ao enviar");
+-      } else {
+-        setStatus("Enviado com sucesso ✅");
+-        formRef.current.reset();
+-      }
+-    } catch (err) {
+-      setStatus("Erro de rede");
+-    } finally {
+-      setSending(false);
+-    }
+-  }
+-
+-  function toggleValueInput(containerName, value) {
+-    const btn = document.querySelector(`button[data-btn="${containerName}"]`);
+-    if (btn) btn.classList.toggle("selected");
+-  }
+-
+-  return (
+-    <div className="page">
+-      <div className="card">
+-        <div className="logo-row">
+-          {/* Se quiser, coloque sua logo em public/logo.png e use <img src="/logo.png" /> */}
+-          <h1>Formulário de Escaneamento</h1>
+-        </div>
+-
+-        <form ref={formRef} onSubmit={handleSubmit} className="scan-form" encType="multipart/form-data">
+-          <div className="form-group">
+-            <label>Cirurgião Dentista</label>
+-            <input name="cirurgia_nome" placeholder="Nome" />
+-            <input name="cirurgia_sobrenome" placeholder="Sobrenome" />
+-          </div>
+-
+-          <!-- muitos campos aqui... -->
+-
+-          <div className="form-actions">
+-            <!-- Comentário HTML removido -->
+-            <button type="submit" disabled={sending}>
+-              {sending ? "Enviando..." : "Enviar"}
+-            </button>
+-            <div className="status">{status}</div>
+-          </div>
+-        </form>
+-      </div>
+-    </div>
+-  );
+-}
++import { useState, useRef } from "react";
++import Image from "next/image";
++import "../styles/new-scan.css";
++
++export default function NewScan() {
++  const [status, setStatus] = useState("");
++  const [sending, setSending] = useState(false);
++  const formRef = useRef(null);
++
++  async function handleSubmit(e) {
++    e.preventDefault();
++    setSending(true);
++    setStatus("");
++
++    const formData = new FormData(formRef.current);
++
++    try {
++      const res = await fetch("/api/send-scan", {
++        method: "POST",
++        body: formData,
++      });
++
++      const data = await res.json();
++
++      if (!res.ok) {
++        setStatus(data.error || "Erro ao enviar");
++      } else {
++        setStatus("Enviado com sucesso ✅");
++        formRef.current.reset();
++      }
++    } catch (err) {
++      setStatus("Erro de rede");
++    } finally {
++      setSending(false);
++    }
++  }
++
++  // pequeno utilitário DOM (mantido, mas usado apenas se necessário)
++  function toggleValueInput(containerName, value) {
++    const btn = document.querySelector(`button[data-btn="${containerName}"]`);
++    if (btn) btn.classList.toggle("selected");
++  }
++
++  return (
++    <div className="page">
++      <div className="card">
++        <div className="logo-row">
++          {/* Se quiser, coloque sua logo em public/logo.png e use <img src="/logo.png" alt="logo" /> */}
++          <h1>Formulário de Escaneamento</h1>
++        </div>
++
++        <form ref={formRef} onSubmit={handleSubmit} className="scan-form" encType="multipart/form-data">
++          <div className="form-group">
++            <label>Cirurgião Dentista</label>
++            <input name="cirurgia_nome" placeholder="Nome" />
++            <input name="cirurgia_sobrenome" placeholder="Sobrenome" />
++          </div>
++
++          {/* ... demais campos do formulário mantidos como estavam ... */}
++
++          <div className="form-actions">
++            <button type="submit" disabled={sending}>
++              {sending ? "Enviando..." : "Enviar"}
++            </button>
++            <div className="status">{status}</div>
++          </div>
++        </form>
++      </div>
++    </div>
++  );
++}
+*** End Patch
+*** Begin Patch
+*** Add File: styles/new-scan.css
++/* new-scan.css — Versão limpa compatível com o bundler */
++.page {
++  background: #faf9f7;
++  min-height: 100vh;
++  padding: 32px;
++  display: flex;
++  justify-content: center;
++  align-items: flex-start;
++}
++
++.card {
++  background: #ffffff;
++  max-width: 960px;
++  width: 100%;
++  padding: 28px;
++  border-radius: 8px;
++  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
++}
++
++.logo-row {
++  text-align: center;
++  margin-bottom: 20px;
++}
++
++h1 {
++  margin-bottom: 20px;
++  text-align: center;
++}
++
++.form-group {
++  margin-bottom: 18px;
++}
++
++label {
++  display: block;
++  font-weight: bold;
++  margin-bottom: 6px;
++}
++
++input[type="text"],
++input[type="file"],
++select,
++textarea {
++  width: 100%;
++  padding: 10px;
++  border: 1px solid #ddd;
++  border-radius: 4px;
++  box-sizing: border-box;
++}
++
++.form-actions {
++  display: flex;
++  gap: 12px;
++  align-items: center;
++  margin-top: 12px;
++}
++
++.form-actions button {
++  background: #d97706; /* laranja suave */
++  color: #fff;
++  padding: 10px 16px;
++  border: none;
++  border-radius: 6px;
++  cursor: pointer;
++}
++
++.form-actions button:disabled {
++  opacity: 0.6;
++  cursor: default;
++}
++
++.status {
++  font-size: 14px;
++  color: #2e7d32;
++}
++
++/* estilos mínimos para botões de seleção de dentes/cores */
++.btn-grid {
++  display: grid;
++  grid-template-columns: repeat(8, 1fr);
++  gap: 8px;
++  margin-bottom: 12px;
++}
++
++.btn-grid button {
++  padding: 8px;
++  border-radius: 6px;
++  border: 1px solid #ccc;
++  background: #fff;
++}
++
++.btn-grid button.selected {
++  background: #f59e0b;
++  color: #fff;
++  border-color: #f59e0b;
++}
++
++/* fim */
+*** End Patch
