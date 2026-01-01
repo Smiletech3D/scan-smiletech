@@ -36,6 +36,10 @@ export default function NewScan() {
 
   // Simple helper to toggle selection for teeth and vita colors
   function toggleValueInput(containerName, value) {
+  const btn = document.querySelector(`button[data-btn="${containerName}"]`);
+  if (!btn) return;
+  btn.classList.toggle("selected");
+}
     // containerName: 'dentes' or 'cores_vita'
     const input = formRef.current.querySelector(`input[name="${containerName}[]"]`);
     // We'll use a simple hidden multi-value approach: create inputs per selection
@@ -73,11 +77,11 @@ export default function NewScan() {
          <form ref={formRef} onSubmit={handleSubmit} className="scan-form" encType="multipart/form-data">
 @@
 -          <div className="form-actions">
--            <button type="submit" disabled={sending}>
--              {sending ? "Enviando..." : "Enviar"}
--            </button>
--            <div className="status">{status}</div>
--          </div>
+  <button type="submit" disabled={sending}>
+    {sending ? "Enviando..." : "Enviar"}
+  </button>
+  <div className="status">{status}</div>
+</div>
 +          <div className="form-actions">
 +            <button type="submit" disabled={sending}>
 +              {sending ? "Enviando..." : "Enviar"}
