@@ -1,143 +1,68 @@
-/* styles/new-scan.css - versão limpa e compatível com Webpack */
 .page {
   background: #faf9f7;
   min-height: 100vh;
-  padding: 40px;
+  padding: 32px;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  font-family: Arial, Helvetica, sans-serif;
-  color: #222;
 }
 
 .card {
-  background: #fff;
-  max-width: 920px;
+  background: #ffffff;
+  max-width: 960px;
   width: 100%;
   padding: 28px;
   border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
 }
 
-.logo-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+h1 {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.form-group {
   margin-bottom: 18px;
 }
 
-.logo-row h1 {
-  margin: 0;
-  font-size: 22px;
-}
-
-/* Form layout */
-.scan-form .form-group {
-  margin-bottom: 18px;
-}
-
-.scan-form label {
+label {
   display: block;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: #222;
+  font-weight: bold;
+  margin-bottom: 6px;
 }
 
-.scan-form input[type="text"],
-.scan-form input[type="url"],
-.scan-form input[type="file"],
-.scan-form select,
-.scan-form textarea {
+input,
+select,
+textarea {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #cfcfcf;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
   border-radius: 4px;
-  box-sizing: border-box;
-  font-size: 14px;
 }
 
-.scan-form input[type="file"] {
-  padding: 6px 8px;
+textarea {
+  resize: vertical;
 }
 
 .form-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 8px;
+  margin-top: 20px;
 }
 
-.form-actions button {
-  background: #d55b00;
-  color: white;
+button {
+  background: #e57a1f;
+  color: #fff;
   border: none;
   padding: 10px 18px;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: 700;
+  font-weight: bold;
 }
 
-.form-actions button:disabled {
+button:disabled {
   opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .status {
-  margin-top: 6px;
-  color: #0a7a3e;
-  font-weight: 600;
-}
-
-/* Teeth grid */
-.teeth-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 8px;
-}
-
-.teeth-btn {
-  background: white;
-  border: 1px solid #cfcfcf;
-  padding: 8px 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.teeth-btn.selected {
-  background: #f1a661;
-  border-color: #e07b2a;
-  color: #fff;
-}
-
-/* Vita colors grid */
-.vita-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.vita-btn {
-  background: white;
-  border: 1px solid #cfcfcf;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.vita-btn.selected {
-  background: #d55b00;
-  color: #fff;
-  border-color: #a44400;
-}
-
-/* Responsive */
-@media (max-width: 860px) {
-  .teeth-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .card {
-    padding: 18px;
-  }
+  margin-top: 10px;
+  font-weight: bold;
+  color: #2e7d32;
 }
