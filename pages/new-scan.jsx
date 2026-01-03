@@ -115,7 +115,7 @@ export default function NewScan() {
               <option>Escaneamento arcada inferior</option>
               <option>Escaneamento parcial (quadrante)</option>
               <option>Escaneamento de modelo</option>
-              <option>Escaneamento de prótese</option>
+              <option>Escaneamento de prótese/implantes</option>
               <option>Escaneamento para planejamento cirúrgico</option>
               <option>Outro</option>
             </select>
